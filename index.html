@@ -49,6 +49,13 @@
         
         .loading-overlay { display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.8); z-index: 1000; align-items: center; justify-content: center; border-radius: 0.75rem; }
         .modal-active { display: flex !important; }
+
+        /* Sorting Indicators */
+        th.sortable { cursor: pointer; position: relative; transition: background 0.2s; }
+        th.sortable:hover { background: #f1f5f9; }
+        th.sortable::after { content: '↕'; position: absolute; right: 10px; opacity: 0.3; }
+        th.sort-asc::after { content: '↑'; opacity: 1; color: #2563eb; }
+        th.sort-desc::after { content: '↓'; opacity: 1; color: #2563eb; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
@@ -74,39 +81,6 @@
     <!-- Main Content -->
     <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full text-sm">
         
-        <!-- Controls & Filters -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
-                <div class="lg:col-span-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Cari Paket</label>
-                    <input type="text" id="searchPaket" placeholder="Ketik nama ruas/jembatan..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 ring-brand-500/20 transition-all">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Kecamatan</label>
-                    <select id="filterKecamatan" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 ring-brand-500/20">
-                        <option value="All">Semua</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Sub Kegiatan</label>
-                    <select id="filterSubKegiatan" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 ring-brand-500/20">
-                        <option value="All">Semua</option>
-                    </select>
-                </div>
-                <div class="lg:col-span-2 flex gap-2">
-                    <label for="kmz-upload" title="Unggah file KMZ dari pemetaan lapangan" class="flex-grow flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-3 rounded-lg cursor-pointer transition-colors shadow-sm text-center">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                        Upload KMZ
-                    </label>
-                    <input type="file" id="kmz-upload" accept=".kmz,.kml" class="hidden">
-
-                    <button id="btnReset" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 px-4 rounded-lg border border-slate-300 transition-colors flex items-center justify-center gap-2" title="Reset Filter">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <!-- KPIs -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-l-4 border-l-brand-500">
@@ -132,14 +106,15 @@
             <div class="flex justify-between items-center px-2 py-2 mb-2">
                 <h3 class="font-bold text-slate-800">Peta Integrasi Spasial</h3>
                 <div class="flex gap-4">
-                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-brand-600 rounded-full"></div><span class="text-xs font-medium text-slate-600">Terhubung RKA</span></div>
-                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-rose-500 rounded-full"></div><span class="text-xs font-medium text-slate-600">Belum Terhubung</span></div>
+                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-brand-600 rounded-full"></div><span class="text-xs font-medium text-slate-600">Terhubung</span></div>
+                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-rose-500 rounded-full"></div><span class="text-xs font-medium text-slate-600">Unmatched</span></div>
+                    <div class="flex items-center gap-2"><div class="w-3 h-3 bg-slate-400 rounded-full"></div><span class="text-xs font-medium text-slate-600">Ruas HSS (KMZ)</span></div>
                 </div>
             </div>
             <div id="map-loader" class="loading-overlay">
                 <div class="text-center">
                     <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-brand-600 mx-auto mb-3"></div>
-                    <span class="font-bold text-slate-700">Menganalisis file spasial...</span>
+                    <span class="font-bold text-slate-700">Memproses Data KMZ...</span>
                 </div>
             </div>
             <div id="map" class="w-full h-[550px]"></div>
@@ -161,51 +136,54 @@
             </div>
         </div>
 
-        <!-- Rekap & Kecamatan Table -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <h3 class="text-base font-semibold text-slate-800 mb-4">Jumlah Paket per Kecamatan</h3>
-                <div class="relative h-80 w-full">
-                    <canvas id="chartKecamatan"></canvas>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 lg:col-span-2 flex flex-col">
-                <h3 class="text-base font-semibold text-slate-800 mb-4">Rekapitulasi Anggaran</h3>
-                <div class="overflow-x-auto table-container flex-grow border border-slate-200 rounded-lg">
-                    <table class="w-full text-sm text-left text-slate-600">
-                        <thead class="text-xs text-slate-500 uppercase bg-slate-100 sticky top-0">
-                            <tr>
-                                <th class="px-4 py-3">Sub Kegiatan</th>
-                                <th class="px-4 py-3 text-center">Jml Paket</th>
-                                <th class="px-4 py-3 text-right">Total Pagu (Rp)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableRekapBody" class="divide-y divide-slate-100"></tbody>
-                        <tfoot class="bg-slate-100 font-bold text-slate-800">
-                            <tr>
-                                <td class="px-4 py-3">TOTAL KESELURUHAN</td>
-                                <td id="tfootPaket" class="px-4 py-3 text-center">0</td>
-                                <td id="tfootTotal" class="px-4 py-3 text-right">Rp 0</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-        </div>
-
         <!-- Detail Table Section -->
         <div id="detailTableSection" class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
-            <h3 class="text-base font-semibold text-slate-800 mb-4 border-b pb-3">Rincian RKA & Status Pemetaan</h3>
-            <div class="overflow-x-auto table-container max-h-[500px] border border-slate-200 rounded-lg">
-                <table class="w-full text-left">
-                    <thead class="sticky top-0 bg-slate-100 z-10 shadow-sm text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-slate-100 pb-5">
+                <h3 class="text-lg font-bold text-slate-800">Rincian RKA & Status Pemetaan</h3>
+                
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <label for="kmz-upload" title="Unggah file KMZ Jalan HSS" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-4 rounded-lg cursor-pointer transition-colors shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        Upload KMZ HSS
+                    </label>
+                    <input type="file" id="kmz-upload" accept=".kmz,.kml" class="hidden">
+                    <button id="btnReset" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-3 rounded-lg border border-slate-300 transition-colors" title="Reset Filter">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters (Moved here above the table) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end mb-6">
+                <div class="lg:col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider">Cari Paket</label>
+                    <input type="text" id="searchPaket" placeholder="Ketik nama ruas/jembatan..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 ring-brand-500/20 transition-all text-sm">
+                </div>
+                <div class="lg:col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider">Filter Kecamatan</label>
+                    <select id="filterKecamatan" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 ring-brand-500/20 text-sm">
+                        <option value="All">Semua Kecamatan</option>
+                    </select>
+                </div>
+                <div class="lg:col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider">Filter Sub Kegiatan</label>
+                    <select id="filterSubKegiatan" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 ring-brand-500/20 text-sm">
+                        <option value="All">Semua Sub Kegiatan</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto table-container max-h-[600px] border border-slate-200 rounded-lg shadow-inner">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-slate-100 z-10 shadow-sm text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         <tr>
-                            <th class="px-4 py-3 w-12 text-center">No</th>
-                            <th class="px-4 py-3">Nama Paket Anggaran</th>
-                            <th class="px-4 py-3 w-40">Kecamatan</th>
-                            <th class="px-4 py-3 w-48 text-right">Pagu (Rp)</th>
-                            <th class="px-4 py-3 text-center">Status</th>
-                            <th class="px-4 py-3 text-center w-20">Aksi</th>
+                            <th class="px-4 py-4 w-12 text-center border-b">No</th>
+                            <th class="px-4 py-4 border-b">Nama Paket Anggaran</th>
+                            <th id="th-kec" class="px-4 py-4 w-40 sortable border-b" onclick="toggleSort('kec')">Kecamatan</th>
+                            <th id="th-pagu" class="px-4 py-4 w-48 text-right sortable border-b" onclick="toggleSort('pagu')">Pagu (Rp)</th>
+                            <th class="px-4 py-4 text-center border-b">Status</th>
+                            <th class="px-4 py-4 text-center w-20 border-b">Peta</th>
                         </tr>
                     </thead>
                     <tbody id="rkaTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
@@ -213,6 +191,29 @@
             </div>
         </div>
 
+        <!-- Rekap Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
+            <h3 class="text-base font-semibold text-slate-800 mb-4">Rekapitulasi per Sub Kegiatan</h3>
+            <div class="overflow-x-auto table-container rounded-lg border border-slate-100">
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                        <tr>
+                            <th class="px-4 py-3">Sub Kegiatan</th>
+                            <th class="px-4 py-3 text-center">Jml Paket</th>
+                            <th class="px-4 py-3 text-right">Total Pagu (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableRekapBody" class="divide-y divide-slate-100"></tbody>
+                    <tfoot class="bg-slate-50 font-bold text-slate-800">
+                        <tr>
+                            <td class="px-4 py-3">TOTAL KESELURUHAN</td>
+                            <td id="tfootPaket" class="px-4 py-3 text-center">0</td>
+                            <td id="tfootTotal" class="px-4 py-3 text-right">Rp 0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
     </main>
 
     <!-- Modal Linker -->
@@ -235,7 +236,7 @@
     <!-- App Logic -->
     <script>
         // =========================================================================
-        // 1. DATA KOORDINAT (PASTE DATA ANDA DI DALAM ARRAY INI)
+        // 1. DATA KOORDINAT (DIISI MANUAL OLEH USER)
         // =========================================================================
 const realCoordinates = [
   {"input":"jalan Taal Jarau - Simpang Baru/Tampang","match":"Taal Jarau - SP. Baru/Tampang","score":1,"coordinates":[[115.236266368524,-2.86555943800388],[115.236164074235,-2.86554701359633],[115.235852157848,-2.86551806743141],[115.235233317793,-2.86549430701052],[115.234799157803,-2.86548827767643],[115.234323238033,-2.86545857729283],[115.233670054219,-2.86543469860083],[115.232564843485,-2.86538128752447],[115.230366306005,-2.86525962895246],[115.22831928935,-2.86515577406368],[115.227867358023,-2.86514114764189],[115.227529678175,-2.86512854778305],[115.227101180746,-2.86511126482276],[115.226714951189,-2.86509939569152],[115.22633591864,-2.86508039732967],[115.225895638033,-2.86504052720187],[115.225611958638,-2.865032156951429],[115.225373278641,-2.86501334722117],[115.223687505659,-2.86491839142524],[115.223455767924,-2.86490652229202],[115.223191349227,-2.86488575130868],[115.222980408469,-2.86486794760821],[115.222668318825,-2.86485415726947],[115.222668318825,-2.86485415726947],[115.222470237849,-2.86484540719914],[115.222323818221,-2.86484420934067],[115.222086138494,-2.86482047107261],[115.221922733681,-2.86483530749013],[115.221792009831,-2.86486794760821],[115.221601866049,-2.8649361951248],[115.221480055188,-2.86497180252319],[115.221346360341,-2.86502818090166],[115.221224549481,-2.86507269014572],[115.221046289686,-2.865114232105539],[115.220279772564,-2.86541689490906],[115.219635066303,-2.86571065578897],[115.219529308727,-2.86578573789264],[115.219409270562,-2.86594803826306],[115.219263691728,-2.8661171732458],[115.218803187256,-2.86675513830676],[115.218289204845,-2.86760081237405],[115.218182248968,-2.867772914388409],[115.218018844155,-2.8679064417954],[115.217576165662,-2.86818536566226],[115.217154296515,-2.86839398476069],[115.216940372391,-2.86849099492735],[115.216759045647,-2.86853212678499],[115.21661187214,-2.8685420973739],[115.216307539385,-2.86849386242107],[115.216144838029,-2.86844957733206],[115.216010038125,-2.86841264743412],[115.215576684954,-2.86826251480472],[115.215232049349,-2.86813788926417],[115.215077557526,-2.86811118378943],[115.214878500754,-2.86814085653913],[115.214533865149,-2.86822097295947],[115.214245678479,-2.86831889302117],[115.214058338196,-2.86835663833607],[115.213853506929,-2.86837230396024],[115.21366039215,-2.86836933668598],[115.210269384188,-2.86723618935723],[115.209967298024,-2.86704925072258],[115.209789183586,-2.86692427317023],[115.209551503859,-2.86678184381309],[115.209270118269,-2.86666376735411],[115.208178903432,-2.86639906482826],[115.207881647916,-2.866362607423409],[115.207570570347,-2.86630550277805],[115.207271819853,-2.866240148443751],[115.207012707148,-2.866159510026641],[115.206447985586,-2.86587454357833],[115.205837110223,-2.8655133585521],[115.205706905541,-2.86535030177452],[115.205583837112,-2.86516380402429],[115.205359427663,-2.8648115692219],[115.205177637914,-2.8645222172808],[115.205118776939,-2.86442285500891],[115.205044502024,-2.86431900004418],[115.204996966079,-2.86426558891587],[115.204931604153,-2.86420921049977],[115.204869939628,-2.86415925003001],[115.204808150536,-2.86412181650314],[115.204735021849,-2.86406108038522],[115.203466902832,-2.86240509972276],[115.203333207985,-2.86214694548112],[115.203244078087,-2.86187395472569],[115.203199513138,-2.86161580036451],[115.203193571145,-2.86134280948243],[115.203291614032,-2.8610549820691],[115.203356975958,-2.86079682752352],[115.203416395889,-2.86056241127648],[115.203475815822,-2.86041107924352],[115.203575464086,-2.860296871710589],[115.204009051543,-2.86018047712763],[115.204301032539,-2.86012674431135],[115.204560229579,-2.8600668729764],[115.204797909306,-2.86009061134296],[115.205077182986,-2.86014698996154],[115.205329717697,-2.86014698996154],[115.205549571445,-2.86006390568058],[115.205721889247,-2.85986212954441],[115.206280436607,-2.85899864597269],[115.206497319359,-2.85864850468266],[115.206910287886,-2.85808175033451],[115.206993476621,-2.857962626424],[115.207145206264,-2.8577673766959],[115.207273481426,-2.85762358341496],[115.207620356072,-2.857274644182711],[115.208214555391,-2.85674943141884],[115.209019695468,-2.85603134352242],[115.209278172172,-2.85582659937057],[115.209521793893,-2.85564856094788],[115.209705995682,-2.855523934035709],[115.209931791423,-2.8554260128808],[115.210163529157,-2.85537260133833],[115.210582439677,-2.85525094170441],[115.210950843255,-2.85499278585313],[115.211322217829,-2.854651545271281],[115.211889678179,-2.85409369088426],[115.212165980862,-2.85376431928398],[115.212335327668,-2.85352693428831],[115.212583877943,-2.85316823834067]]},
@@ -325,11 +326,12 @@ const realCoordinates = [
             ["Kabupaten/Umum", "Penggantian Jembatan", 708500000, "Pemasangan Jembatan Bailey/Jembatan Darurat"]
         ];
 
-        // --- Persistence Logic ---
+        // Persistence & Sorting State
         const STORAGE_KEY = 'binaMargaManualLinks_v1';
         let manualLinks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        let sortConfig = { key: 'id', direction: 'asc' };
 
-        let map, masterLayerGroup;
+        let map, masterLayerGroup, kmzLayerGroup;
         let rkaItems = [];
         let gisItems = [];
         let selectedGisIndex = null;
@@ -338,9 +340,7 @@ const realCoordinates = [
         const formatIDR = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
 
         function initApp() {
-            // Register Chart.js Plugin
             Chart.register(ChartDataLabels);
-
             setupMap();
             processData();
             populateFilters();
@@ -349,8 +349,27 @@ const realCoordinates = [
         }
 
         function setupMap() {
-            map = L.map('map').setView([-2.7, 115.2], 10);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+            const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' });
+            const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; Esri &mdash; DigitalGlobe'
+            });
+
+            map = L.map('map', {
+                center: [-2.75, 115.2],
+                zoom: 11,
+                layers: [street]
+            });
+
+            const baseMaps = {
+                "Jalan (OSM)": street,
+                "Satelit (Esri)": satellite
+            };
+
+            L.control.layers(baseMaps).addTo(map);
+
+            // kmzLayerGroup didefinisikan pertama (belakang)
+            kmzLayerGroup = L.layerGroup().addTo(map);
+            // masterLayerGroup ditambahkan setelahnya (depan)
             masterLayerGroup = L.layerGroup().addTo(map);
         }
 
@@ -362,16 +381,13 @@ const realCoordinates = [
 
             gisItems = realCoordinates.map((g, i) => {
                 if(!g || !g.input) return null;
-                
                 let matchedRkaId = null;
                 let isManual = false;
 
-                // 1. Check Storage
                 if (manualLinks[g.input] !== undefined) {
                     matchedRkaId = manualLinks[g.input];
                     isManual = true;
                 } else {
-                    // 2. String matching
                     const match = rkaItems.find(r => 
                         r.nama.toLowerCase().includes(g.input.toLowerCase()) || 
                         g.input.toLowerCase().includes(r.nama.toLowerCase())
@@ -383,9 +399,29 @@ const realCoordinates = [
                     const target = rkaItems.find(r => r.id === matchedRkaId);
                     if(target) target.gisIndices.push(i);
                 }
-
                 return { ...g, index: i, rkaId: matchedRkaId, isManual };
             }).filter(item => item !== null);
+        }
+
+        function toggleSort(key) {
+            if (sortConfig.key === key) {
+                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.key = key;
+                sortConfig.direction = 'asc';
+            }
+            updateSortUI();
+            renderAll();
+        }
+
+        function updateSortUI() {
+            ['kec', 'pagu'].forEach(k => {
+                const el = document.getElementById(`th-${k}`);
+                el.classList.remove('sort-asc', 'sort-desc');
+                if (sortConfig.key === k) {
+                    el.classList.add(sortConfig.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
         }
 
         function renderAll() {
@@ -393,11 +429,21 @@ const realCoordinates = [
             const kec = document.getElementById('filterKecamatan')?.value || 'All';
             const sub = document.getElementById('filterSubKegiatan')?.value || 'All';
 
-            const filteredRka = rkaItems.filter(r => 
+            let filteredRka = rkaItems.filter(r => 
                 r.nama.toLowerCase().includes(search) &&
                 (kec === 'All' || r.kec === kec) &&
                 (sub === 'All' || r.sub === sub)
             );
+
+            // Sorting logic
+            filteredRka.sort((a, b) => {
+                let valA = a[sortConfig.key];
+                let valB = b[sortConfig.key];
+                if (typeof valA === 'string') {
+                    return sortConfig.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
+            });
 
             updateKPIs(filteredRka);
             renderTable(filteredRka);
@@ -465,20 +511,21 @@ const realCoordinates = [
             if(!tbody) return;
             tbody.innerHTML = '';
             data.forEach((r, idx) => {
+                const isLinked = r.gisIndices.length > 0;
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors";
                 tr.innerHTML = `
-                    <td class="px-4 py-3 text-slate-400 font-medium text-center">${idx+1}</td>
-                    <td class="px-4 py-3 font-semibold text-slate-700 leading-tight">${r.nama}</td>
-                    <td class="px-4 py-3 text-slate-500">${r.kec}</td>
-                    <td class="px-4 py-3 text-right font-bold">${formatIDR(r.pagu)}</td>
-                    <td class="px-4 py-3 text-center">
-                        <span class="px-2 py-1 rounded text-[9px] font-bold border ${r.gisIndices.length ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-400 border-slate-200'}">
-                            ${r.gisIndices.length ? 'TERPETAKAN' : 'OFFLINE'}
+                    <td class="px-4 py-4 text-slate-400 font-medium text-center border-b">${idx+1}</td>
+                    <td class="px-4 py-4 font-semibold text-slate-700 leading-tight border-b">${r.nama}</td>
+                    <td class="px-4 py-4 text-slate-500 border-b">${r.kec}</td>
+                    <td class="px-4 py-4 text-right font-bold border-b">${formatIDR(r.pagu)}</td>
+                    <td class="px-4 py-4 text-center border-b">
+                        <span class="px-2 py-1 rounded text-[9px] font-bold border ${isLinked ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-400 border-slate-200'}">
+                            ${isLinked ? 'TERPETAKAN' : 'OFFLINE'}
                         </span>
                     </td>
-                    <td class="px-4 py-3 text-center">
-                        <button onclick="zoomToRka(${r.id})" class="p-1.5 rounded-lg hover:bg-brand-100 text-brand-600 ${!r.gisIndices.length ? 'opacity-20 pointer-events-none' : ''}">
+                    <td class="px-4 py-4 text-center border-b">
+                        <button onclick="zoomToRka(${r.id})" class="p-1.5 rounded-lg hover:bg-brand-100 text-brand-600 ${!isLinked ? 'opacity-20 pointer-events-none' : ''}">
                             <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round"></path></svg>
                         </button>
                     </td>
@@ -487,6 +534,52 @@ const realCoordinates = [
             });
         }
 
+        // KMZ Handling
+        async function handleKMZUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('map-loader').style.display = 'flex';
+            try {
+                if (file.name.toLowerCase().endsWith('.kmz')) {
+                    const zip = await JSZip.loadAsync(file);
+                    const kmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
+                    if (kmlFile) {
+                        const kmlText = await zip.files[kmlFile].async('text');
+                        parseKMLHSS(kmlText);
+                    }
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = (e) => parseKMLHSS(e.target.result);
+                    reader.readAsText(file);
+                }
+            } catch (e) {
+                alert("Gagal memproses file.");
+            } finally {
+                document.getElementById('map-loader').style.display = 'none';
+            }
+        }
+
+        function parseKMLHSS(kmlText) {
+            const parser = new DOMParser();
+            const kmlDom = parser.parseFromString(kmlText, 'text/xml');
+            const geoJSON = toGeoJSON.kml(kmlDom);
+            
+            kmzLayerGroup.clearLayers();
+
+            geoJSON.features.forEach(feature => {
+                if (feature.geometry && (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString')) {
+                    const layer = L.geoJSON(feature, {
+                        style: { color: '#94a3b8', weight: 2, opacity: 0.5 } // Abu-abu terang, di layer belakang
+                    });
+                    layer.bindTooltip(feature.properties.name || "Ruas Jalan HSS", { sticky: true });
+                    layer.addTo(kmzLayerGroup);
+                }
+            });
+            
+            alert("Selesai mengunggah data pembanding Jalan HSS.");
+        }
+
+        // Modal Logic & Helpers
         window.openLinker = (idx) => {
             selectedGisIndex = idx;
             document.getElementById('selected-gis-name').textContent = gisItems[idx].input;
@@ -494,15 +587,12 @@ const realCoordinates = [
             filterLinkerList();
         }
 
-        window.closeLinker = () => {
-            document.getElementById('linker-modal').classList.remove('modal-active');
-        }
+        window.closeLinker = () => document.getElementById('linker-modal').classList.remove('modal-active');
 
         window.performLink = (rkaId) => {
             const gis = gisItems[selectedGisIndex];
             manualLinks[gis.input] = rkaId;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(manualLinks));
-            
             closeLinker();
             processData();
             renderAll();
@@ -512,7 +602,6 @@ const realCoordinates = [
             const gis = gisItems[idx];
             delete manualLinks[gis.input];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(manualLinks));
-            
             processData();
             renderAll();
             map.closePopup();
@@ -532,16 +621,10 @@ const realCoordinates = [
 
         function renderCharts(data) {
             const aggSub = {};
-            const aggKec = {};
-            data.forEach(d => {
-                aggSub[d.sub] = (aggSub[d.sub] || 0) + d.pagu;
-                aggKec[d.kec] = (aggKec[d.kec] || 0) + 1;
-            });
-
+            data.forEach(d => aggSub[d.sub] = (aggSub[d.sub] || 0) + d.pagu);
             const labelsSub = Object.keys(aggSub).sort();
             const dataSub = labelsSub.map(l => aggSub[l]);
 
-            // Chart Sub Kegiatan
             const ctxSub = document.getElementById('chartSubKegiatan')?.getContext('2d');
             if (ctxSub) {
                 if (chartSubKegiatan) chartSubKegiatan.destroy();
@@ -552,17 +635,13 @@ const realCoordinates = [
                         responsive: true, maintainAspectRatio: false,
                         plugins: { 
                             legend: { display: false },
-                            datalabels: { 
-                                anchor: 'end', align: 'top', color: 'black', font: { weight: 'bold', size: 10 },
-                                formatter: (v) => (v/1000000000).toFixed(1) + 'M'
-                            }
+                            datalabels: { anchor: 'end', align: 'top', color: 'black', font: { weight: 'bold', size: 10 }, formatter: (v) => (v/1000000000).toFixed(1) + 'M' }
                         },
-                        scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rp ' + (v/1000000000).toFixed(0) + ' M' } } }
+                        scales: { y: { beginAtZero: true, ticks: { callback: v => (v/1000000000).toFixed(0) + ' M' } } }
                     }
                 });
             }
 
-            // Chart Proporsi
             const ctxProp = document.getElementById('chartProporsi')?.getContext('2d');
             if (ctxProp) {
                 if (chartProporsi) chartProporsi.destroy();
@@ -582,7 +661,8 @@ const realCoordinates = [
                 });
             }
 
-            // Chart Kecamatan
+            const aggKec = {};
+            data.forEach(d => aggKec[d.kec] = (aggKec[d.kec] || 0) + 1);
             const ctxKec = document.getElementById('chartKecamatan')?.getContext('2d');
             if (ctxKec) {
                 const labelsKec = Object.keys(aggKec).sort();
@@ -593,10 +673,7 @@ const realCoordinates = [
                     data: { labels: labelsKec, datasets: [{ data: dataKec, backgroundColor: '#10b981', borderRadius: 4 }] },
                     options: { 
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                        plugins: { 
-                            legend: { display: false },
-                            datalabels: { anchor: 'end', align: 'right', color: 'black', font: { weight: 'bold' } }
-                        }
+                        plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: 'black', font: { weight: 'bold' } } }
                     }
                 });
             }
@@ -631,6 +708,15 @@ const realCoordinates = [
             });
         }
 
+        function populateFilters() {
+            const kecs = [...new Set(rkaItems.map(d => d.kec))].sort();
+            const subs = [...new Set(rkaItems.map(d => d.sub))].sort();
+            const kSel = document.getElementById('filterKecamatan');
+            const sSel = document.getElementById('filterSubKegiatan');
+            kecs.forEach(k => kSel.add(new Option(k, k)));
+            subs.forEach(s => sSel.add(new Option(s, s)));
+        }
+
         function setupListeners() {
             document.getElementById('searchPaket').addEventListener('input', renderAll);
             document.getElementById('filterKecamatan').addEventListener('change', renderAll);
@@ -644,55 +730,7 @@ const realCoordinates = [
             document.getElementById('kmz-upload').addEventListener('change', handleKMZUpload);
         }
 
-        async function handleKMZUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            document.getElementById('map-loader').style.display = 'flex';
-            try {
-                if (file.name.toLowerCase().endsWith('.kmz')) {
-                    const zip = await JSZip.loadAsync(file);
-                    const kmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
-                    if (kmlFile) {
-                        const kmlText = await zip.files[kmlFile].async('text');
-                        parseKML(kmlText);
-                    }
-                } else {
-                    const reader = new FileReader();
-                    reader.onload = (e) => parseKML(e.target.result);
-                    reader.readAsText(file);
-                }
-            } catch (e) {
-                alert("Gagal memproses file.");
-            } finally {
-                document.getElementById('map-loader').style.display = 'none';
-            }
-        }
-
-        function parseKML(kmlText) {
-            const parser = new DOMParser();
-            const kmlDom = parser.parseFromString(kmlText, 'text/xml');
-            const geoJSON = toGeoJSON.kml(kmlDom);
-            geoJSON.features.forEach(feature => {
-                if (feature.geometry && (feature.geometry.type === 'LineString' || feature.geometry.type === 'Point')) {
-                    const coords = feature.geometry.type === 'LineString' ? feature.geometry.coordinates : [feature.geometry.coordinates];
-                    realCoordinates.push({ input: (feature.properties.name || "Upload") + " (New)", coordinates: coords });
-                }
-            });
-            processData();
-            renderAll();
-        }
-
-        function populateFilters() {
-            const kecs = [...new Set(rkaItems.map(d => d.kec))].sort();
-            const subs = [...new Set(rkaItems.map(d => d.sub))].sort();
-            const kSel = document.getElementById('filterKecamatan');
-            const sSel = document.getElementById('filterSubKegiatan');
-            kecs.forEach(k => kSel.add(new Option(k, k)));
-            subs.forEach(s => sSel.add(new Option(s, s)));
-        }
-
         window.onload = initApp;
     </script>
 </body>
 </html>
-
